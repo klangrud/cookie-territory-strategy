@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cookie-territory-ingress
+  namespace: cookie-territory
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - cookie-territory.example.com
+      secretName: cookie-territory-tls
+  rules:
+    - host: cookie-territory.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cookie-territory-app
+                port:
+                  number: 80

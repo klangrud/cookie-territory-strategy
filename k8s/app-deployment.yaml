@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cookie-territory-app
+  namespace: cookie-territory
+  labels:
+    app: cookie-territory-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cookie-territory-app
+  template:
+    metadata:
+      labels:
+        app: cookie-territory-app
+    spec:
+      containers:
+        - name: app
+          # Push your image to a registry and update this reference
+          image: cookie-territory:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: cookie-territory-secret
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"

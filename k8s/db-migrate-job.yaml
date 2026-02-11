@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cookie-territory-db-migrate
+  namespace: cookie-territory
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: cookie-territory:latest
+          command: ["npx", "prisma", "db", "push"]
+          envFrom:
+            - secretRef:
+                name: cookie-territory-secret
+      restartPolicy: Never

@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cookie
+      POSTGRES_PASSWORD: cookie
+      POSTGRES_DB: cookie_territory
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+    ports:
+      - "3001:3000"
+    environment:
+      DATABASE_URL: postgresql://cookie:cookie@db:5432/cookie_territory?schema=public
+      NEXTAUTH_SECRET: dev-secret-change-in-production
+      NEXTAUTH_URL: http://localhost:3001
+      AUTH_TRUST_HOST: "true"
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

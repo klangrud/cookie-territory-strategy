@@ -1,0 +1,84 @@
+# In-cluster PostgreSQL for cookie-territory.
+# For production, consider using a managed database (RDS, Cloud SQL, etc.)
+# and skip applying this file entirely — just update the DATABASE_URL in secret.yaml.
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cookie-territory-db-secret
+  namespace: cookie-territory
+type: Opaque
+stringData:
+  POSTGRES_USER: cookie
+  POSTGRES_PASSWORD: cookie
+  POSTGRES_DB: cookie_territory
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cookie-territory-db-pvc
+  namespace: cookie-territory
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cookie-territory-db
+  namespace: cookie-territory
+  labels:
+    app: cookie-territory-db
+spec:
+  serviceName: cookie-territory-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cookie-territory-db
+  template:
+    metadata:
+      labels:
+        app: cookie-territory-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: cookie-territory-db-secret
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: cookie-territory-db-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cookie-territory-db
+  namespace: cookie-territory
+spec:
+  type: ClusterIP
+  selector:
+    app: cookie-territory-db
+  ports:
+    - port: 5432
+      targetPort: 5432
