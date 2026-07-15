@@ -7,14 +7,12 @@ interface MapControlsProps {
   showScouts: boolean;
   showBooths: boolean;
   showRadius: boolean;
-  showHeatmap: boolean;
   radiusMiles: number;
   troopNumbers: string[];
   visibleTroops: Set<string>;
   onToggleScouts: () => void;
   onToggleBooths: () => void;
   onToggleRadius: () => void;
-  onToggleHeatmap: () => void;
   onRadiusChange: (value: number) => void;
   onToggleTroop: (troopNumber: string) => void;
   onSelectAllTroops: () => void;
@@ -31,14 +29,12 @@ export function MapControls({
   showScouts,
   showBooths,
   showRadius,
-  showHeatmap,
   radiusMiles,
   troopNumbers,
   visibleTroops,
   onToggleScouts,
   onToggleBooths,
   onToggleRadius,
-  onToggleHeatmap,
   onRadiusChange,
   onToggleTroop,
   onSelectAllTroops,
@@ -100,15 +96,6 @@ export function MapControls({
             />
           </div>
         )}
-        <label className="flex items-center gap-2 text-sm text-gray-900">
-          <input
-            type="checkbox"
-            checked={showHeatmap}
-            onChange={onToggleHeatmap}
-            className="rounded"
-          />
-          Heat Map
-        </label>
       </div>
 
       <hr />

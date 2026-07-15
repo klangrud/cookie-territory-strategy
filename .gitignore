@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local secrets — never commit real k8s Secret values
+k8s/*.local.yaml
+
+# local Claude Code settings (machine-specific)
+.claude/settings.local.json

@@ -11,7 +11,6 @@ import {
 import { MapControls } from "./map-controls";
 import { MapLegend } from "./map-legend";
 import { MapCircle } from "./map-circle";
-import { MapHeatmap } from "./map-heatmap";
 import { MapSearch } from "./map-search";
 import { getBoothRadius, getBoothPinLabel, BOOTH_TYPES, type BoothType } from "@/lib/booth-types";
 import { getDateColor } from "@/lib/date-colors";
@@ -72,7 +71,6 @@ export function TerritoryMap({
   const [showScouts, setShowScouts] = useState(true);
   const [showBooths, setShowBooths] = useState(true);
   const [showRadius, setShowRadius] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(false);
   const [radiusMiles, setRadiusMiles] = useState(0.5);
   const [selectedBooth, setSelectedBooth] = useState<BoothPin | null>(null);
   const [dateFrom, setDateFrom] = useState("");
@@ -190,21 +188,6 @@ export function TerritoryMap({
     return { lat: avgLat, lng: avgLng };
   }, [scouts, booths]);
 
-  const heatmapPoints = useMemo(() => {
-    const points = [];
-    if (showScouts) {
-      points.push(
-        ...filteredScouts.map((s) => ({ lat: s.latitude, lng: s.longitude }))
-      );
-    }
-    if (showBooths) {
-      points.push(
-        ...filteredBooths.map((b) => ({ lat: b.latitude, lng: b.longitude }))
-      );
-    }
-    return points;
-  }, [showScouts, showBooths, filteredScouts, filteredBooths]);
-
   // Scout radius circles — use global radiusMiles slider
   const scoutRadiusPins = useMemo(() => {
     if (!showScouts) return [];
@@ -263,7 +246,7 @@ export function TerritoryMap({
   return (
     <APIProvider
       apiKey={apiKey}
-      libraries={["visualization"]}
+  
     >
       <div className={`flex ${reportMode ? "h-screen" : "h-[calc(100vh-3.5rem)]"}`}>
         {/* Sidebar */}
@@ -273,14 +256,14 @@ export function TerritoryMap({
               showScouts={showScouts}
               showBooths={showBooths}
               showRadius={showRadius}
-              showHeatmap={showHeatmap}
+
               radiusMiles={radiusMiles}
               troopNumbers={inViewTroopNumbersSorted}
               visibleTroops={visibleTroops}
               onToggleScouts={() => setShowScouts((v) => !v)}
               onToggleBooths={() => setShowBooths((v) => !v)}
               onToggleRadius={() => setShowRadius((v) => !v)}
-              onToggleHeatmap={() => setShowHeatmap((v) => !v)}
+
               onRadiusChange={setRadiusMiles}
               onToggleTroop={toggleTroop}
               onSelectAllTroops={selectAllTroops}
@@ -409,8 +392,6 @@ export function TerritoryMap({
                 />
               ))}
 
-            {/* Heatmap */}
-            {showHeatmap && <MapHeatmap points={heatmapPoints} />}
           </Map>
 
           {/* Report mode overlays */}
