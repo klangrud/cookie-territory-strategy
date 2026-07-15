@@ -18,7 +18,7 @@ spec:
       containers:
         - name: app
           # Push your image to a registry and update this reference
-          image: cookie-territory:latest
+          image: us-central1-docker.pkg.dev/YOUR_PROJECT_ID/cookie-territory/app:latest
           ports:
             - containerPort: 3000
           envFrom:

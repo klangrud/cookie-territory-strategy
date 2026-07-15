@@ -54,6 +54,9 @@ spec:
           envFrom:
             - secretRef:
                 name: cookie-territory-db-secret
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: pgdata
               mountPath: /var/lib/postgresql/data

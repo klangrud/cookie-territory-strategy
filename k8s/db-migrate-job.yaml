@@ -9,8 +9,8 @@ spec:
     spec:
       containers:
         - name: migrate
-          image: cookie-territory:latest
-          command: ["npx", "prisma", "db", "push"]
+          image: us-central1-docker.pkg.dev/YOUR_PROJECT_ID/cookie-territory/app:latest
+          command: ["node", "node_modules/prisma/build/index.js", "db", "push"]
           envFrom:
             - secretRef:
                 name: cookie-territory-secret
