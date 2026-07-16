@@ -12,3 +12,12 @@ export async function getAllTroops() {
 export async function getTroopById(id: string) {
   return db.troop.findUnique({ where: { id } });
 }
+
+export async function getTroopByNumber(troopNumber: string) {
+  return db.troop.findUnique({
+    where: { troopNumber },
+    include: {
+      _count: { select: { scouts: true, booths: true } },
+    },
+  });
+}
