@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { geocodeAddress } from "@/lib/geocode";
+import { requireActionScope, assertCanEditTroop } from "@/lib/authz";
 import {
   createBoothSchema,
   updateBoothSchema,
@@ -28,6 +29,9 @@ export async function createBooth(formData: FormData) {
       Object.values(parsed.error.flatten().fieldErrors).flat().join(", ")
     );
   }
+
+  const scope = await requireActionScope();
+  assertCanEditTroop(scope, parsed.data.troopId);
 
   const sourceBoothId = formData.get("sourceBoothId") as string | null;
 
@@ -96,6 +100,11 @@ export async function updateBooth(formData: FormData) {
   const existing = await db.booth.findUnique({
     where: { id: parsed.data.id },
   });
+  if (!existing) throw new Error("Booth not found");
+
+  const scope = await requireActionScope();
+  assertCanEditTroop(scope, existing.troopId);
+  assertCanEditTroop(scope, parsed.data.troopId);
 
   const addressChanged =
     existing &&
@@ -131,9 +140,14 @@ export async function updateBooth(formData: FormData) {
 
 export async function deleteBooth(formData: FormData) {
   const id = formData.get("id") as string;
-  const troopId = formData.get("troopId") as string;
   if (!id) throw new Error("ID is required");
 
+  const existing = await db.booth.findUnique({ where: { id } });
+  if (!existing) throw new Error("Booth not found");
+
+  const scope = await requireActionScope();
+  assertCanEditTroop(scope, existing.troopId);
+
   await db.booth.delete({ where: { id } });
-  revalidatePath(`/admin/booths/${troopId}`);
+  revalidatePath(`/admin/booths/${existing.troopId}`);
 }

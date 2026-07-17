@@ -1,20 +1,25 @@
 import { db } from "@/lib/db";
 
-export async function getDashboardStats() {
+export async function getDashboardStats(troopIds?: string[]) {
+  const troopFilter = troopIds ? { id: { in: troopIds } } : {};
+  const scoutFilter = troopIds ? { troopId: { in: troopIds } } : {};
+  const boothFilter = troopIds ? { troopId: { in: troopIds } } : {};
+
   const [troopCount, scoutCount, boothCount, geocodedScouts, geocodedBooths] =
     await Promise.all([
-      db.troop.count(),
-      db.scout.count(),
-      db.booth.count(),
+      db.troop.count({ where: troopFilter }),
+      db.scout.count({ where: scoutFilter }),
+      db.booth.count({ where: boothFilter }),
       db.scout.count({
-        where: { latitude: { not: null }, longitude: { not: null } },
+        where: { ...scoutFilter, latitude: { not: null }, longitude: { not: null } },
       }),
       db.booth.count({
-        where: { latitude: { not: null }, longitude: { not: null } },
+        where: { ...boothFilter, latitude: { not: null }, longitude: { not: null } },
       }),
     ]);
 
   const troops = await db.troop.findMany({
+    where: troopFilter,
     orderBy: { troopNumber: "asc" },
     include: {
       _count: { select: { scouts: true, booths: true } },

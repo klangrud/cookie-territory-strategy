@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { createBooth, deleteBooth } from "@/lib/actions/booth.actions";
+import { createBooth } from "@/lib/actions/booth.actions";
 import { BOOTH_TYPES, type BoothType } from "@/lib/booth-types";
+import { BoothRow } from "@/components/admin/booth-row";
 
 interface Booth {
   id: string;
@@ -23,9 +24,10 @@ interface Booth {
 interface BoothManagerProps {
   troopId: string;
   booths: Booth[];
+  canEdit: boolean;
 }
 
-export function BoothManager({ troopId, booths }: BoothManagerProps) {
+export function BoothManager({ troopId, booths, canEdit }: BoothManagerProps) {
   const formRef = useRef<HTMLFormElement>(null);
 
   const [name, setName] = useState("");
@@ -76,6 +78,7 @@ export function BoothManager({ troopId, booths }: BoothManagerProps) {
 
   return (
     <>
+      {canEdit && (
       <form
         ref={formRef}
         action={handleSubmit}
@@ -233,6 +236,7 @@ export function BoothManager({ troopId, booths }: BoothManagerProps) {
           Add Booth
         </button>
       </form>
+      )}
 
       <table className="mt-6 w-full text-left text-sm">
         <thead>
@@ -248,52 +252,13 @@ export function BoothManager({ troopId, booths }: BoothManagerProps) {
         </thead>
         <tbody>
           {booths.map((booth) => (
-            <tr key={booth.id} className="border-b">
-              <td className="py-2 font-medium">{booth.name}</td>
-              <td className="py-2 text-gray-500 capitalize">
-                {booth.boothType}
-              </td>
-              <td className="py-2 text-gray-600">
-                {booth.street}, {booth.city}, {booth.state} {booth.zip}
-              </td>
-              <td className="py-2">
-                {new Date(booth.date).toLocaleDateString()}
-              </td>
-              <td className="py-2">
-                {booth.startTime}–{booth.endTime}
-              </td>
-              <td className="py-2 text-center">
-                {booth.latitude && booth.longitude ? (
-                  <span
-                    className="text-green-600"
-                    title={`${booth.latitude}, ${booth.longitude}`}
-                  >
-                    ✓
-                  </span>
-                ) : (
-                  <span className="text-red-500">✗</span>
-                )}
-              </td>
-              <td className="py-2 text-right space-x-2">
-                <button
-                  type="button"
-                  onClick={() => handleCopy(booth)}
-                  className="text-xs text-green-700 hover:text-green-900"
-                >
-                  Copy
-                </button>
-                <form action={deleteBooth} className="inline">
-                  <input type="hidden" name="id" value={booth.id} />
-                  <input type="hidden" name="troopId" value={troopId} />
-                  <button
-                    type="submit"
-                    className="text-xs text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </td>
-            </tr>
+            <BoothRow
+              key={booth.id}
+              booth={booth}
+              troopId={troopId}
+              canEdit={canEdit}
+              onCopy={handleCopy}
+            />
           ))}
 
           {booths.length === 0 && (

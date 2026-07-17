@@ -13,6 +13,16 @@ export async function getTroopById(id: string) {
   return db.troop.findUnique({ where: { id } });
 }
 
+export async function getTroopsByIds(ids: string[]) {
+  return db.troop.findMany({
+    where: { id: { in: ids } },
+    orderBy: { troopNumber: "asc" },
+    include: {
+      _count: { select: { scouts: true, booths: true } },
+    },
+  });
+}
+
 export async function getTroopByNumber(troopNumber: string) {
   return db.troop.findUnique({
     where: { troopNumber },

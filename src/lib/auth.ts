@@ -31,7 +31,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
-          isAdmin: user.isAdmin,
+          isSuperAdmin: user.isSuperAdmin,
         };
       },
     }),
@@ -40,15 +40,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.isAdmin = (user as { isAdmin?: boolean }).isAdmin;
+        token.isSuperAdmin = (user as { isSuperAdmin?: boolean }).isSuperAdmin;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        (session.user as { isAdmin?: boolean }).isAdmin =
-          token.isAdmin as boolean;
+        session.user.isSuperAdmin = token.isSuperAdmin as boolean;
       }
       return session;
     },

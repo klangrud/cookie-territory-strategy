@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { logout } from "@/lib/actions/auth.actions";
+import { getAccessScope, getRoleLabel } from "@/lib/authz";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
+  const roleLabel = session?.user?.id
+    ? getRoleLabel(await getAccessScope(session.user.id))
+    : null;
 
   return (
     <html lang="en">
@@ -52,14 +56,24 @@ export default async function RootLayout({
               </div>
               <div className="flex items-center gap-4">
                 {session ? (
-                  <form action={logout}>
-                    <button
-                      type="submit"
-                      className="cursor-pointer text-sm text-gray-700 hover:text-gray-900"
-                    >
-                      Logout
-                    </button>
-                  </form>
+                  <>
+                    <span className="text-sm text-gray-600">
+                      {session.user?.name}
+                      {roleLabel && (
+                        <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                          {roleLabel}
+                        </span>
+                      )}
+                    </span>
+                    <form action={logout}>
+                      <button
+                        type="submit"
+                        className="cursor-pointer text-sm text-gray-700 hover:text-gray-900"
+                      >
+                        Logout
+                      </button>
+                    </form>
+                  </>
                 ) : (
                   <Link
                     href="/login"

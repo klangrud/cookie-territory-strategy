@@ -3,11 +3,15 @@ import { getAllScoutsForMap } from "@/lib/queries/scout.queries";
 import { getAllBoothsForMap } from "@/lib/queries/booth.queries";
 import { TerritoryMap } from "@/components/map/territory-map";
 import { buildTroopColorMap } from "@/lib/troop-colors";
+import { getAccessScope } from "@/lib/authz";
 
 export default async function HomePage() {
   const session = await auth();
+  const scope = session?.user?.id ? await getAccessScope(session.user.id) : null;
   const [scouts, booths] = await Promise.all([
-    session ? getAllScoutsForMap() : Promise.resolve([]),
+    scope
+      ? getAllScoutsForMap(scope.isSuperAdmin ? undefined : scope.viewableTroopIds)
+      : Promise.resolve([]),
     getAllBoothsForMap(),
   ]);
 

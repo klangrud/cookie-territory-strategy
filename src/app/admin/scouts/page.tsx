@@ -1,8 +1,12 @@
 import Link from "next/link";
-import { getAllTroops } from "@/lib/queries/troop.queries";
+import { getAllTroops, getTroopsByIds } from "@/lib/queries/troop.queries";
+import { requireAccessScope } from "@/lib/authz";
 
 export default async function ScoutsIndexPage() {
-  const troops = await getAllTroops();
+  const scope = await requireAccessScope();
+  const troops = scope.isSuperAdmin
+    ? await getAllTroops()
+    : await getTroopsByIds(scope.viewableTroopIds);
 
   return (
     <div>
