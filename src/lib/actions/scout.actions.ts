@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { geocodeAddress } from "@/lib/geocode";
+import { requireActionScope, assertCanEditTroop } from "@/lib/authz";
 import {
   createScoutSchema,
   updateScoutSchema,
@@ -24,6 +25,9 @@ export async function createScout(formData: FormData) {
       Object.values(parsed.error.flatten().fieldErrors).flat().join(", ")
     );
   }
+
+  const scope = await requireActionScope();
+  assertCanEditTroop(scope, parsed.data.troopId);
 
   const scout = await db.scout.create({ data: parsed.data });
 
@@ -65,6 +69,11 @@ export async function updateScout(formData: FormData) {
   const existing = await db.scout.findUnique({
     where: { id: parsed.data.id },
   });
+  if (!existing) throw new Error("Scout not found");
+
+  const scope = await requireActionScope();
+  assertCanEditTroop(scope, existing.troopId);
+  assertCanEditTroop(scope, parsed.data.troopId);
 
   const addressChanged =
     existing &&
@@ -99,9 +108,14 @@ export async function updateScout(formData: FormData) {
 
 export async function deleteScout(formData: FormData) {
   const id = formData.get("id") as string;
-  const troopId = formData.get("troopId") as string;
   if (!id) throw new Error("ID is required");
 
+  const existing = await db.scout.findUnique({ where: { id } });
+  if (!existing) throw new Error("Scout not found");
+
+  const scope = await requireActionScope();
+  assertCanEditTroop(scope, existing.troopId);
+
   await db.scout.delete({ where: { id } });
-  revalidatePath(`/admin/scouts/${troopId}`);
+  revalidatePath(`/admin/scouts/${existing.troopId}`);
 }

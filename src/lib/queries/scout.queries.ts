@@ -7,11 +7,12 @@ export async function getScoutsByTroop(troopId: string) {
   });
 }
 
-export async function getAllScoutsForMap() {
+export async function getAllScoutsForMap(troopIds?: string[]) {
   return db.scout.findMany({
     where: {
       latitude: { not: null },
       longitude: { not: null },
+      ...(troopIds ? { troopId: { in: troopIds } } : {}),
     },
     select: {
       id: true,

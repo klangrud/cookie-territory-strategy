@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireAccessScope } from "@/lib/authz";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session) redirect("/login");
+  // Any authenticated user can reach the admin area now — even with zero
+  // troop memberships, they need access to /admin/troops to create their
+  // first troop (self-service; see troop.actions.ts).
+  const scope = await requireAccessScope();
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)]">
@@ -41,12 +42,22 @@ export default async function AdminLayout({
           >
             Booths
           </Link>
-          <Link
-            href="/admin/import"
-            className="block rounded px-3 py-2 text-sm text-green-100 hover:bg-green-800"
-          >
-            Import
-          </Link>
+          {scope.isSuperAdmin && (
+            <>
+              <Link
+                href="/admin/import"
+                className="block rounded px-3 py-2 text-sm text-green-100 hover:bg-green-800"
+              >
+                Import
+              </Link>
+              <Link
+                href="/admin/users"
+                className="block rounded px-3 py-2 text-sm text-green-100 hover:bg-green-800"
+              >
+                Users
+              </Link>
+            </>
+          )}
           <Link
             href="/admin/settings"
             className="block rounded px-3 py-2 text-sm text-green-100 hover:bg-green-800"

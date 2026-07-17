@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { getTroopById } from "@/lib/queries/troop.queries";
 import { getScoutsByTroop } from "@/lib/queries/scout.queries";
-import { createScout, deleteScout } from "@/lib/actions/scout.actions";
+import { createScout } from "@/lib/actions/scout.actions";
+import { requireAccessScope, canViewTroop, canEditTroop } from "@/lib/authz";
+import { ScoutRow } from "@/components/admin/scout-row";
 
 export default async function TroopScoutsPage({
   params,
@@ -12,6 +14,10 @@ export default async function TroopScoutsPage({
   const troop = await getTroopById(troopId);
   if (!troop) notFound();
 
+  const scope = await requireAccessScope();
+  if (!canViewTroop(scope, troopId)) notFound();
+  const canEdit = canEditTroop(scope, troopId);
+
   const scouts = await getScoutsByTroop(troopId);
 
   return (
@@ -20,6 +26,7 @@ export default async function TroopScoutsPage({
         Scouts — Troop {troop.troopNumber}
       </h1>
 
+      {canEdit && (
       <form action={createScout} className="mt-6 rounded border bg-green-50 p-4">
         <h2 className="mb-3 text-sm font-semibold text-green-900">Add Scout</h2>
         <input type="hidden" name="troopId" value={troopId} />
@@ -94,6 +101,7 @@ export default async function TroopScoutsPage({
           Add Scout
         </button>
       </form>
+      )}
 
       <table className="mt-6 w-full text-left text-sm">
         <thead>
@@ -106,35 +114,12 @@ export default async function TroopScoutsPage({
         </thead>
         <tbody>
           {scouts.map((scout) => (
-            <tr key={scout.id} className="border-b">
-              <td className="py-2 font-medium">
-                {scout.firstName} {scout.lastName}
-              </td>
-              <td className="py-2 text-gray-600">
-                {scout.street}, {scout.city}, {scout.state} {scout.zip}
-              </td>
-              <td className="py-2 text-center">
-                {scout.latitude && scout.longitude ? (
-                  <span className="text-green-600" title={`${scout.latitude}, ${scout.longitude}`}>
-                    ✓
-                  </span>
-                ) : (
-                  <span className="text-red-500">✗</span>
-                )}
-              </td>
-              <td className="py-2 text-right">
-                <form action={deleteScout} className="inline">
-                  <input type="hidden" name="id" value={scout.id} />
-                  <input type="hidden" name="troopId" value={troopId} />
-                  <button
-                    type="submit"
-                    className="text-xs text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </td>
-            </tr>
+            <ScoutRow
+              key={scout.id}
+              scout={scout}
+              troopId={troopId}
+              canEdit={canEdit}
+            />
           ))}
 
           {scouts.length === 0 && (

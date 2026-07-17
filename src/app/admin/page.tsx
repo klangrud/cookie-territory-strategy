@@ -1,7 +1,11 @@
 import { getDashboardStats } from "@/lib/queries/analytics.queries";
+import { requireAccessScope } from "@/lib/authz";
 
 export default async function AdminDashboardPage() {
-  const stats = await getDashboardStats();
+  const scope = await requireAccessScope();
+  const stats = await getDashboardStats(
+    scope.isSuperAdmin ? undefined : scope.viewableTroopIds
+  );
 
   return (
     <div>

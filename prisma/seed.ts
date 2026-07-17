@@ -4,16 +4,16 @@ import { hash } from "bcryptjs";
 const db = new PrismaClient();
 
 async function main() {
-  const passwordHash = await hash("admin123", 12);
+  const adminPasswordHash = await hash("admin123", 12);
   await db.user.upsert({
     where: { email: "admin@cookieterritory.local" },
-    update: {},
+    update: { isSuperAdmin: true },
     create: {
       email: "admin@cookieterritory.local",
-      passwordHash,
+      passwordHash: adminPasswordHash,
       firstName: "Admin",
       lastName: "User",
-      isAdmin: true,
+      isSuperAdmin: true,
     },
   });
 
@@ -42,6 +42,46 @@ async function main() {
     where: { troopNumber: "5574" },
     update: {},
     create: { troopNumber: "5574", name: "St. Johns Seniors", serviceUnitArea: "North Portland" },
+  });
+
+  // Leader/regional test users
+  const leaderPasswordHash = await hash("leader123", 12);
+  const leaderUser = await db.user.upsert({
+    where: { email: "leader@cookieterritory.local" },
+    update: {},
+    create: {
+      email: "leader@cookieterritory.local",
+      passwordHash: leaderPasswordHash,
+      firstName: "Laura",
+      lastName: "Leader",
+    },
+  });
+  await db.troopMembership.upsert({
+    where: { userId_troopId: { userId: leaderUser.id, troopId: troop1.id } },
+    update: { role: "LEADER" },
+    create: { userId: leaderUser.id, troopId: troop1.id, role: "LEADER" },
+  });
+
+  const regionalPasswordHash = await hash("regional123", 12);
+  const regionalUser = await db.user.upsert({
+    where: { email: "regional@cookieterritory.local" },
+    update: {},
+    create: {
+      email: "regional@cookieterritory.local",
+      passwordHash: regionalPasswordHash,
+      firstName: "Rita",
+      lastName: "Regional",
+    },
+  });
+  await db.troopMembership.upsert({
+    where: { userId_troopId: { userId: regionalUser.id, troopId: troop2.id } },
+    update: { role: "REGIONAL" },
+    create: { userId: regionalUser.id, troopId: troop2.id, role: "REGIONAL" },
+  });
+  await db.troopMembership.upsert({
+    where: { userId_troopId: { userId: regionalUser.id, troopId: troop3.id } },
+    update: { role: "REGIONAL" },
+    create: { userId: regionalUser.id, troopId: troop3.id, role: "REGIONAL" },
   });
 
   // 9 scouts per troop — fake names, real Portland residential streets
@@ -150,6 +190,9 @@ async function main() {
   }
 
   console.log("Seed complete: 5 troops, 45 scouts, 20 booths across Portland, OR.");
+  console.log("Users: admin@cookieterritory.local / admin123 (superadmin)");
+  console.log("       leader@cookieterritory.local / leader123 (leader of troop 1147)");
+  console.log("       regional@cookieterritory.local / regional123 (regional over troops 2263, 3385)");
 }
 
 main()

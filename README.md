@@ -8,9 +8,10 @@ This application handles sensitive information about Girl Scouts, including name
 
 - **Scout names and addresses are never exposed on any public page.** All personally identifiable information (PII) is restricted to the authenticated admin panel, which requires login and is protected by middleware.
 - **The public map shows booth locations only.** Unauthenticated visitors can see booth pins (location, date, time, troop number) but zero scout data.
-- **Logged-in users** see scout pins on the map as anonymous dots — only coordinates and troop number. Names and addresses are never sent to the browser for the map view. The server query uses a strict `select` to return only `id`, `latitude`, `longitude`, and `troopNumber`.
-- **Admin pages** (`/admin/*`) are the only place where scout names and addresses appear. These routes are protected by NextAuth middleware — unauthenticated requests are redirected to the login page.
-- **No public API endpoints expose scout PII.** All data fetching for scouts goes through server components and server actions that check authentication.
+- **Logged-in users** see scout pins on the map as anonymous dots — only coordinates and troop number — and only for the troop(s) they belong to (see [Roles & Access](#roles--access)). Superadmins see every troop; everyone else sees only their own. Names and addresses are never sent to the browser for the map view. The server query uses a strict `select` to return only `id`, `latitude`, `longitude`, and `troopNumber`.
+- **Admin pages** (`/admin/*`) are the only place where scout names and addresses appear, and even there, a given user only sees the troops they're a member of. These routes are protected by NextAuth middleware (must be logged in) plus per-page authorization checks (must have access to the specific troop).
+- **No public API endpoints expose scout PII.** All data fetching for scouts goes through server components and server actions that check authentication and troop-level authorization.
+- **The MCP server is scoped to non-PII data only.** It exposes troop, booth, and aggregate stats — no scout names or addresses. See [MCP Server](#mcp-server).
 
 If you are deploying this for your troop or service unit, please also review the [Security Best Practices](#security-best-practices) section below.
 
@@ -20,11 +21,14 @@ If you are deploying this for your troop or service unit, please also review the
 - **Booth Planning** — Visualize booth coverage radius by type (storefront, neighborhood, rural)
 - **Filters & Controls** — Filter by troop, date range, toggle scouts/booths/radius/heatmap
 - **Report View** — Print-friendly dashboard with troop statistics, scout counts, and geocoding coverage
-- **Bulk Import** — Import troops, scouts, and booths from Excel or CSV files with row-level validation
-- **Admin Panel** — Full CRUD for troops, scouts, and booth assignments
-- **Authentication** — Email/password registration and login with role-based admin access
+- **Bulk Import** — Import troops, scouts, and booths from Excel or CSV files with row-level validation (superadmin only)
+- **Admin Panel** — CRUD for troops, scouts, and booths, scoped to the troops each user has access to
+- **Self-Service Troops** — Any logged-in user can create a troop and automatically becomes its leader — no admin hand-off required
+- **Role-Based Access** — Troop leaders, regional leaders, and superadmins each see and manage a different slice of the data (see [Roles & Access](#roles--access))
+- **Authentication** — Email/password registration and login via NextAuth
 - **Geocoding** — Automatic address-to-coordinate conversion with database-level caching
 - **Change Password** — Logged-in users can change their password from the admin settings page
+- **MCP Server** — Query troop, booth, and aggregate stats from Claude Desktop or Claude Code (see [MCP Server](#mcp-server))
 
 ## Technologies
 
@@ -33,6 +37,7 @@ If you are deploying this for your troop or service unit, please also review the
 - **Database** — PostgreSQL 16, Prisma 5 ORM
 - **Maps & Geolocation** — Google Maps JavaScript API, Geocoding API, @vis.gl/react-google-maps
 - **Data Import** — xlsx (SheetJS) for Excel parsing
+- **MCP Server** — `@modelcontextprotocol/sdk` for querying data from Claude Desktop/Code
 - **Infrastructure** — Docker (multi-stage builds), Docker Compose, Kubernetes manifests
 
 ## Prerequisites
@@ -119,21 +124,31 @@ npx prisma db push
 npm run dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) and register an account.
+Open [http://localhost:3001](http://localhost:3001), register an account, then go to `/admin/troops` and add your troop — you'll automatically become its leader. See [Roles & Access](#roles--access) for how the permission model works.
 
-### Creating an admin user
+## Roles & Access
 
-There is no self-service admin signup — this is intentional. The first user registers through the UI, then an existing admin promotes them by updating the database directly:
+Every logged-in user can reach `/admin`, but what they see there depends on their role:
+
+| Role | How you get it | What you can do |
+|------|----------------|------------------|
+| **Leader** | Automatic — create a troop yourself at `/admin/troops` | Full CRUD on your troop(s): scouts, booths, and the troop record itself (edit/delete included) |
+| **Regional** | Assigned by a superadmin via `/admin/users` | Identical permissions to Leader, just typically covering more troops on behalf of a region — e.g. troops that don't have their own dedicated leader yet |
+| **Superadmin** | Set directly in the database (see below) | Everything, across every troop, plus exclusive access to bulk **Import** and the **Users** page for assigning Leader/Regional memberships |
+
+`Leader` and `Regional` are functionally identical — the role label just documents *why* someone has access, not what they're allowed to do. Access to a specific troop is tracked in the `TroopMembership` table (one row per user/troop pair, with a `role` of `LEADER` or `REGIONAL`).
+
+### Creating a superadmin
+
+There is no self-service superadmin signup — this is intentional, since a superadmin can see and edit every troop's data. The first user registers through the UI, then an existing superadmin (or you, directly) promotes them by updating the database:
 
 ```bash
 # Connect to the database
 docker compose exec db psql -U cookie cookie_territory
 
-# Promote a user to admin
-UPDATE "User" SET "isAdmin" = true WHERE email = 'you@example.com';
+# Promote a user to superadmin
+UPDATE "User" SET "isSuperAdmin" = true WHERE email = 'you@example.com';
 ```
-
-Only admin users can access the `/admin` pages.
 
 ## Docker Compose
 
@@ -239,13 +254,14 @@ The home page displays an interactive Google Map. Booth locations are plotted as
 
 ### Admin panel
 
-Log in and navigate to `/admin` to access the dashboard. The sidebar provides links to:
+Log in and navigate to `/admin` to access the dashboard. What's scoped to your own troop(s) vs. visible to everyone is noted below (see [Roles & Access](#roles--access)):
 
-- **Dashboard** — Troop statistics, scout/booth counts, geocoding coverage
-- **Troops** — Create and manage troops with a number, name, and service unit area
-- **Scouts** — Add scouts with their home address. Addresses are automatically geocoded for map placement
-- **Booths** — Add booth locations with address, date, time, and booth type (storefront, neighborhood, rural)
-- **Import** — Bulk-upload troops, scouts, and booths from Excel or CSV files. Files can contain extra columns — they will be ignored. Each import tab shows the expected columns and validates every row before importing
+- **Dashboard** — Troop statistics, scout/booth counts, geocoding coverage (your troops only, unless superadmin)
+- **Troops** — Create a troop (you become its leader automatically), edit its number/name/service unit area, or delete it. Superadmins see and can manage every troop
+- **Scouts** — Add scouts with their home address. Addresses are automatically geocoded for map placement. Search and sort are available once the list grows
+- **Booths** — Add booth locations with address, date, time, and booth type (storefront, neighborhood, rural). "Copy" pre-fills the add form from an existing booth for quick re-entry on a new date
+- **Import** — Bulk-upload troops, scouts, and booths from Excel or CSV files (superadmin only). Files can contain extra columns — they will be ignored. Each import tab shows the expected columns and validates every row before importing
+- **Users** — Assign or remove Leader/Regional troop memberships for other users (superadmin only)
 - **Settings** — Change your account password
 
 ### Map controls
@@ -261,21 +277,40 @@ When logged in, the map shows both scouts and booths. Use the sidebar controls t
 - Switch color mode between troop-based and date-based
 - Enter report view for a print-friendly layout
 
+## MCP Server
+
+A local [Model Context Protocol](https://modelcontextprotocol.io) server (`mcp-server/index.ts`) lets Claude Desktop or Claude Code query the app's data directly — handy for an admin asking "which booths still need geocoding?" instead of digging through the dashboard. It's scoped to **non-PII data only** (troops, booths, aggregate stats — no scout names or addresses), reusing the same query functions the app itself uses.
+
+Tools exposed: `list_troops`, `get_troop`, `list_booths` (filterable by troop/date range), `list_ungeocoded_booths`, `get_dashboard_stats`.
+
+Run it standalone:
+
+```bash
+npm run mcp
+```
+
+Or point Claude Code/Desktop at it via the `.mcp.json` in this repo, which is already configured to run `npx tsx --env-file=.env mcp-server/index.ts`.
+
 ## Project Structure
 
 ```
 src/
 ├── app/              # Next.js App Router pages and API routes
 │   ├── (auth)/       # Login and registration pages
-│   ├── admin/        # Admin dashboard, troops, scouts, booths, import, settings
+│   ├── admin/        # Admin dashboard, troops, scouts, booths, users, import, settings
 │   └── api/          # Auth handlers and health check
 ├── components/       # React components (map, admin, import)
-└── lib/              # Shared logic
-    ├── actions/      # Server actions (mutations)
-    ├── queries/      # Data fetching functions
-    └── validators/   # Zod schemas
+├── lib/              # Shared logic
+│   ├── actions/      # Server actions (mutations)
+│   ├── queries/      # Data fetching functions
+│   ├── validators/   # Zod schemas
+│   └── authz.ts      # Role/troop-membership authorization helpers
+└── types/            # NextAuth session type augmentation
 prisma/
-└── schema.prisma     # Database schema
+└── schema.prisma     # Database schema (Troop, Scout, Booth, User, TroopMembership)
+mcp-server/
+└── index.ts          # MCP server exposing non-PII troop/booth data
+.mcp.json             # MCP server config for Claude Code/Desktop
 k8s/                  # Kubernetes manifests
 ```
 
